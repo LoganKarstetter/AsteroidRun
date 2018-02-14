@@ -1,0 +1,5 @@
+//Format single image: <image>, one per line
+//Format multiple images: <[sequence name: <image1>, <image2>]>, one per line
+Apple.png
+Space Background.png
+[Space Freighter: Space Freighter 1.png, Space Freighter 2.png, Space Freighter 3.png, Space Freighter 4.png]
