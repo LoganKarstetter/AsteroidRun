@@ -23,8 +23,14 @@ public class Asteroid
     /** The number of pixels this asteroid will move in the y-direction each update */
     private int yStep;
 
+    /** Determines whether this asteroid is currently active (should be updated).
+     * This field is used to keep the asteroid from immediately resetting after hitting the ship */
+    boolean isActive;
+
     /** The BufferedImage used to display this asteroid on the screen */
     private BufferedImage image;
+    /** The BufferedImage used to display an explosion on the screen */
+    private BufferedImage explosionImage;
     /** The AsteroidManager that manages this asteroid */
     private AsteroidManager asteroidManager;
 
@@ -32,22 +38,25 @@ public class Asteroid
      * Create an Asteroid for a game of AsteroidRun. Asteroids are obstacles floating in space that the
      * player must dodge in their spaceship.
      * @param imageName The name of the image used to display the asteroid on screen.
+     * @param explosionImageName The name of the image used to display asteroid explosion on screen.
      * @param imageLoader A reference to the imageLoader for this game.
      * @param asteroidManager A reference to the AsteroidManager that interfaces with the enclosing AsteroidRunPanel.
      */
-    public Asteroid(String imageName, ImageLoader imageLoader, AsteroidManager asteroidManager)
+    public Asteroid(String imageName, String explosionImageName, ImageLoader imageLoader, AsteroidManager asteroidManager)
     {
         //Store the asteroidManager
         this.asteroidManager = asteroidManager;
 
-        //Load the asteroid's image
+        //Load the asteroid's image and the explosion image
         image = imageLoader.getImage(imageName);
+        explosionImage = imageLoader.getImage(explosionImageName);
 
         //Calculate the width and height of the asteroid
         width = image.getWidth();
         height = image.getHeight();
 
         //Set the initial position and steps of the asteroid
+        isActive = true;
         reset();
     }
 
@@ -58,23 +67,33 @@ public class Asteroid
      */
     public void update(int index)
     {
-        //Check if the asteroid has gone off the screen
-        if (hasGoneOffScreen())
+        //Only update the asteroid if it is active
+        if (isActive)
         {
-            //Reset the position and steps of the asteroid
+            //Check if the asteroid has gone off the screen
+            if (hasGoneOffScreen())
+            {
+                //Reset the position and steps of the asteroid
+                reset();
+            }
+
+            //Check if the asteroid has collided with another asteroid
+            if (hasHitAsteroid(index))
+            {
+                xStep = -xStep; //Invert the direction
+                xPos = xPos + xStep; //Give the asteroid an extra push to separate the asteroids
+            }
+
+            //Move the asteroid
+            xPos = xPos + xStep;
+            yPos = yPos + yStep;
+        }
+        else //Make the asteroid active, this will update it on the next tick
+        {
+            isActive = true;
             reset();
         }
 
-        //Check if the asteroid has collided with another asteroid
-        if (hasHitAsteroid(index))
-        {
-            xStep = -xStep; //Invert the direction
-            xPos = xPos + xStep; //Give the asteroid an extra push to separate the asteroids
-        }
-
-        //Move the asteroid
-        xPos = xPos + xStep;
-        yPos = yPos + yStep;
 
     }
 
@@ -108,14 +127,14 @@ public class Asteroid
     /**
      * Reset the position and step values of the asteroid.
      */
-    private void reset()
+    public void reset()
     {
         //Create a Random number generator
         Random rng = new Random();
 
         //Calculate a new position
         xPos = rng.nextInt(AsteroidRunPanel.WIDTH - width);
-        yPos = rng.nextInt(height);
+        yPos = -rng.nextInt(height);
 
         //Calculate new step values
         if (Math.random() >= 0.5)
@@ -133,14 +152,12 @@ public class Asteroid
 
     /**
      * Get a rectangle object representing this asteroids collision box using its position and dimensions.
-     * Since an asteroid is spherical, the width and height of the rectangle are reduced by 5 pixels to
-     * give the player some wiggle room.
      * @return A rectangle roughly representing this asteroid.
      */
     public Rectangle getRectangle()
     {
         //Give the player some wiggle room
-        return new Rectangle(xPos, yPos, width - 5, height - 5);
+        return new Rectangle(xPos, yPos, width, height);
     }
 
     /**
@@ -153,12 +170,28 @@ public class Asteroid
         //Draw the asteroid if the image is not null
         if (image != null)
         {
-            dbGraphics.drawImage(image, xPos, yPos, null);
+            //Draw the asteroid if is active
+            if (isActive)
+            {
+                dbGraphics.drawImage(image, xPos, yPos, null);
+            }
+            else //Draw the explosion image
+            {
+                dbGraphics.drawImage(explosionImage, xPos, yPos, null);
+            }
         }
         else //Draw a GREEN circle
         {
             dbGraphics.setColor(Color.GREEN);
             dbGraphics.fillOval(xPos, yPos, width, height);
         }
+    }
+
+    /**
+     * Deactivate the asteroid.
+     */
+    public void hitShip()
+    {
+        isActive = false;
     }
 }

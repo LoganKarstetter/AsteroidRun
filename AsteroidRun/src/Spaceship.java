@@ -73,11 +73,7 @@ public class Spaceship
     public void update()
     {
         //Check if the ship has hit an asteroid
-        if (hasHitAsteroid())
-        {
-            System.out.println("Game Over");
-            asteroidRunPanel.gameOver();
-        }
+        hasHitAsteroid(); //The asteroidManager will handle ending the game, if applicable
 
         //Update the sequencePlayer and move the ship
         sequencePlayer.update();
@@ -123,8 +119,9 @@ public class Spaceship
      */
     private boolean hasHitAsteroid()
     {
-        //Check if the ship has hit any asteroids
-        return asteroidManager.checkCollisions(new Rectangle(xPos, yPos, width, height));
+        //Check if the ship has hit any asteroids, give the player some wiggle room
+        return asteroidManager.checkCollisions(new Rectangle(xPos +  25, yPos + 25, width - 25,
+                height - 25), true);
     }
 
     /**

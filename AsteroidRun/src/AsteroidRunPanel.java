@@ -26,6 +26,10 @@ public class AsteroidRunPanel extends JPanel implements Runnable
     private int FPS;
     /** The amount of time allocated for each cycle of the game loop (in nanos) */
     private long loopPeriod;
+    /** The time the game started (in nanos) */
+    private long gameStartTime;
+    /** The amount of time spent playing the game (in secs) */
+    private int timeSpentInGame;
 
     /** The max number of times the animator thread can loop without sleeping
      * before it is forced to sleep/yield and let other threads execute */
@@ -39,6 +43,11 @@ public class AsteroidRunPanel extends JPanel implements Runnable
     /** The image that is created/rendered offscreen and later painted to the screen */
     private Image dbImage;
 
+    /** The font used to display messages to the user */
+    private Font asteroidFont;
+    /** The font metrics used to help render the font messages */
+    private FontMetrics fontMetrics;
+
     /** The ImageLoader used to load the game images */
     private ImageLoader imageLoader;
     /** The KeyManager used to process key events */
@@ -46,10 +55,16 @@ public class AsteroidRunPanel extends JPanel implements Runnable
 
     /** The Spaceship controlled by the player in this game */
     private Spaceship spaceship;
+    /** The number of lives the player starts with */
+    private int initialNumberOfLives;
+    /** The number of lives the player has remaining before the game is over */
+    private int livesRemaining;
     /** The AsteroidManager that manages the game's asteroids */
     private AsteroidManager asteroidManager;
     /** The Ribbon used to display the moving background */
     private Ribbon backgroundRibbon;
+    /** The BufferedImage used to display the panel behind the game timer and lives remaining counter */
+    private BufferedImage panelImage;
 
 
     /**
@@ -77,12 +92,23 @@ public class AsteroidRunPanel extends JPanel implements Runnable
         this.addKeyListener(keyManager);
 
         //Create the asteroidManager and spaceship
-        asteroidManager = new AsteroidManager(5, imageLoader);
-        spaceship = new Spaceship("Space Freighter", loopPeriod, asteroidManager,
+        asteroidManager = new AsteroidManager(7, imageLoader, this);
+        spaceship = new Spaceship("Space Heavy Freighter", loopPeriod, asteroidManager,
                 imageLoader, keyManager, this );
+
+        //Set the number of lives, the initial number of lives variable is only used for printing
+        initialNumberOfLives = 3;
+        livesRemaining = initialNumberOfLives;
 
         //Create the backgroundRibbon
         backgroundRibbon = new Ribbon(imageLoader.getImage("Space Background"), 1);
+
+        //Load the panelImage
+        panelImage = imageLoader.getImage("AsteroidRun Panel");
+
+        //Create the font and font metrics
+        asteroidFont = new Font("SansSerif", Font.BOLD, 19);
+        fontMetrics = this.getFontMetrics(asteroidFont);
     }
 
     /**
@@ -143,6 +169,19 @@ public class AsteroidRunPanel extends JPanel implements Runnable
         gameOver = true;
     }
 
+    /** Remove one of the player's remaining lives. If the number of remaining lives is less than
+     * zero, then the game is over.
+     */
+    public void lifeLost()
+    {
+        //Decrement the lives remaining
+        livesRemaining--;
+        if (livesRemaining < 0)
+        {
+            gameOver();
+        }
+    }
+
     /**
      * Repeatably update, render, paint, and sleep such that the game loop takes close to the amount of
      * time allotted by the desired FPS (loopPeriod).
@@ -169,6 +208,7 @@ public class AsteroidRunPanel extends JPanel implements Runnable
 
         //Get the current time before the first loop
         beforeTime = System.nanoTime();
+        gameStartTime = beforeTime; //Store the time the game started
 
         //Game loop
         isRunning = true;
@@ -268,6 +308,9 @@ public class AsteroidRunPanel extends JPanel implements Runnable
             {
                 //Get the graphics context to draw to the dbImage
                 dbGraphics = dbImage.getGraphics();
+
+                //Set the font once
+                dbGraphics.setFont(asteroidFont);
             }
         }
 
@@ -275,8 +318,11 @@ public class AsteroidRunPanel extends JPanel implements Runnable
         backgroundRibbon.draw(dbGraphics);
 
         //Render the game elements
-        asteroidManager.draw(dbGraphics);
         spaceship.draw(dbGraphics);
+        asteroidManager.draw(dbGraphics);
+
+        //Print the game stats
+        printStats(dbGraphics);
     }
 
     /**
@@ -303,6 +349,46 @@ public class AsteroidRunPanel extends JPanel implements Runnable
         catch (NullPointerException e)
         {
             System.out.println("Graphics context error: " + e);
+        }
+    }
+
+    /**
+     * Print the game statistics onto the screen.
+     */
+    private void printStats(Graphics dbGraphics)
+    {
+        //Set the color to white
+        dbGraphics.setColor(Color.BLACK);
+
+        //Draw the panelImage
+        dbGraphics.drawImage(panelImage, 0, 0, null);
+
+        //Calculate the time playing as long as the game isn't over
+        if (!gameOver)
+        {
+            timeSpentInGame = (int) ((System.nanoTime() - gameStartTime)/1000000000L);  // ns --> secs
+            //Write out the time spent in game
+            dbGraphics.drawString("Game time: " + timeSpentInGame, 5, 20);
+            //Print the number of lives/shields the player has remaining
+            dbGraphics.drawString("Shields: " + ((float) livesRemaining/initialNumberOfLives) * 100 + "%", 5, 40);
+        }
+        else
+        {
+            //Write out the time spent in game
+            dbGraphics.drawString("Game time: " + timeSpentInGame, 5, 20);
+            //The player lost, so the shields/lives must be at zero percent
+            dbGraphics.drawString("Shields: 0.0%", 5, 40);
+
+            //Write the game over message to the screen
+            int msgX = (WIDTH - fontMetrics.stringWidth("Game Over!"))/2;
+            int msgY = (HEIGHT - fontMetrics.getHeight())/2;
+            dbGraphics.setColor(Color.WHITE);
+            dbGraphics.drawString("Game Over!", msgX, msgY);
+
+            //Write the created by message to the screen
+            msgX = (WIDTH - fontMetrics.stringWidth("Code and Graphics by: Logan Karstetter"))/2;
+            msgY = (HEIGHT - fontMetrics.getHeight())/2;
+            dbGraphics.drawString("Code and Graphics by: Logan Karstetter", msgX, msgY + fontMetrics.getHeight());
         }
     }
 
